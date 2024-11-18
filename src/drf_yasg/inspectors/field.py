@@ -853,6 +853,8 @@ class FileFieldInspector(FieldInspector):
                 if param["in"] != openapi.IN_FORM:
                     raise err  # pragma: no cover
                 return param
+            elif swagger_object_type == openapi.Items:
+                return SwaggerType(type=openapi.TYPE_FILE)
             else:
                 raise err  # pragma: no cover
 
