@@ -1,7 +1,7 @@
 import inspect
 import logging
 import textwrap
-from collections import OrderedDict
+import zoneinfo
 from decimal import Decimal
 
 import pytz
@@ -21,15 +21,6 @@ from rest_framework.utils import encoders, json
 from rest_framework.views import APIView
 
 from .app_settings import swagger_settings
-
-try:
-    import zoneinfo
-except ImportError:
-    try:
-        from backports import zoneinfo
-    except ImportError:
-        zoneinfo = None
-
 
 logger = logging.getLogger(__name__)
 
@@ -354,8 +345,8 @@ def guess_response_status(method):
         return status.HTTP_200_OK
 
 
-def param_list_to_odict(parameters):
-    """Transform a list of :class:`.Parameter` objects into an ``OrderedDict`` keyed on
+def param_list_to_dict(parameters):
+    """Transform a list of :class:`.Parameter` objects into an ``dict`` keyed on
     the ``(name, in_)`` tuple of each parameter.
 
     Raises an ``AssertionError`` if `parameters` contains duplicate parameters (by their
@@ -365,7 +356,7 @@ def param_list_to_odict(parameters):
     :return: `parameters` keyed by ``(name, in_)``
     :rtype: dict[(str,str),drf_yasg.openapi.Parameter]
     """
-    result = OrderedDict(((param.name, param.in_), param) for param in parameters)
+    result = {(param.name, param.in_): param for param in parameters}
     assert len(result) == len(parameters), "duplicate Parameters found"
     return result
 
@@ -382,9 +373,9 @@ def merge_params(parameters, overrides):
     :return: merged list
     :rtype: list[drf_yasg.openapi.Parameter]
     """
-    parameters = param_list_to_odict(parameters)
-    parameters.update(param_list_to_odict(overrides))
-    return list(parameters.values())
+    return list(
+        (param_list_to_dict(parameters) | param_list_to_dict(overrides)).values()
+    )
 
 
 def filter_none(obj):
@@ -606,7 +597,7 @@ def field_value_to_representation(field, value):
     elif isinstance(value, pytz.BaseTzInfo):
         value = str(value)
 
-    elif zoneinfo is not None and isinstance(value, zoneinfo.ZoneInfo):
+    elif isinstance(value, zoneinfo.ZoneInfo):
         value = str(value)
 
     # JSON roundtrip ensures that the value is valid JSON;
